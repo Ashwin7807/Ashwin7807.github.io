@@ -1,27 +1,27 @@
 /* =========================================================
-   TOKENS — Warm amber / terracotta palette
+   TOKENS — Calm & Warm Amber / Earthy Palette
    ========================================================= */
 :root {
-  --bg: #0C0A08;
-  --bg-alt: #141210;
-  --bg-raised: #1E1A16;
-  --ink: #F5EFE6;
-  --muted: #A89880;
-  --muted-dim: #6B5C4E;
-  --accent: #C9965A;
-  --accent-soft: rgba(201, 150, 90, 0.13);
-  --accent-deep: #A0714F;
-  --line: #2A2018;
-  --line-soft: rgba(42, 32, 24, 0.6);
+  --bg: #0A0908;
+  --bg-alt: #12100E;
+  --bg-raised: #1A1612;
+  --ink: #F4EFEA;
+  --muted: #9E9080;
+  --muted-dim: #63574A;
+  --accent: #C49359;
+  --accent-soft: rgba(196, 147, 89, 0.10);
+  --accent-deep: #9B6C4B;
+  --line: #241C16;
+  --line-soft: rgba(36, 28, 22, 0.5);
 
-  /* warm secondary tones */
-  --teal: #D4956A;
-  --teal-soft: rgba(212, 149, 106, 0.14);
-  --rose: #C07A5C;
-  --rose-soft: rgba(192, 122, 92, 0.14);
-  --warm-gold: #E0B870;
-  --warm-terracotta: #C2654A;
-  --warm-sand: #D4B896;
+  /* calm warm secondary tones */
+  --teal: #CE9066;
+  --teal-soft: rgba(206, 144, 102, 0.12);
+  --rose: #B97457;
+  --rose-soft: rgba(185, 116, 87, 0.12);
+  --warm-gold: #DCB36C;
+  --warm-terracotta: #BA6046;
+  --warm-sand: #CEB290;
 
   --font-display: 'Syne', sans-serif;
   --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;

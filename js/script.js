@@ -113,32 +113,12 @@ document.getElementById('year').textContent = new Date().getFullYear();
 })();
 
 /* =========================================================
-   ID CARD — mouse tilt (rotatable) + click-to-flip
+   ID CARD — single touch / click flip
    ========================================================= */
 (() => {
   const card = document.getElementById('id-card');
   if (!card) return;
-  let flipped = false;
-
-  const maxTilt = 14;
-  card.addEventListener('mousemove', (e) => {
-    if (prefersReducedMotion) return;
-    const rect = card.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;
-    const py = (e.clientY - rect.top) / rect.height;
-    const rotY = (px - 0.5) * maxTilt * 2;
-    const rotX = (0.5 - py) * maxTilt * 2;
-    card.style.transform = `rotateX(${rotX}deg) rotateY(${rotY + (flipped ? 180 : 0)}deg)`;
-  });
-  card.addEventListener('mouseleave', () => {
-    card.style.transform = `rotateX(0deg) rotateY(${flipped ? 180 : 0}deg)`;
-  });
-
-  const doFlip = () => {
-    flipped = !flipped;
-    card.classList.toggle('is-flipped', flipped);
-    card.style.transform = '';
-  };
+  const doFlip = () => card.classList.toggle('is-flipped');
   card.addEventListener('click', doFlip);
   card.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doFlip(); }
@@ -497,7 +477,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
 })();
 
 /* =========================================================
-   CURSOR EFFECT — hand pointer cursor + orbiting bot + trailing hex glyphs
+   CURSOR EFFECT — classic arrow cursor + orbiting dot/bot + trailing hex glyphs
    ========================================================= */
 (() => {
   if (window.matchMedia('(hover: none)').matches) return; // skip on touch
@@ -522,16 +502,14 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const hexChars = '0123456789ABCDEF';
   let overInteractive = false;
 
-  // Preload clean pointer-hand cursor SVGs
-  const handImg = new Image();
-  // Classic pointing hand — index finger extended upward, clean cursor shape
-  const handSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M13 3.5C13 2.12 14.12 1 15.5 1S18 2.12 18 3.5V14a2.5 2.5 0 0 1 2.5 2.5v.5a2.5 2.5 0 0 1 2 2.45v.55a2.5 2.5 0 0 1 1.5 2.27V25a6 6 0 0 1-6 6h-4A6 6 0 0 1 8 25v-8.5a2.5 2.5 0 0 1 5 0V3.5z" fill="rgba(245,239,230,0.93)" stroke="rgba(60,40,20,0.5)" stroke-width="0.7" stroke-linejoin="round"/></svg>')}` ;
-  handImg.src = handSVGData;
+  // Preload classic standard cursor pointer arrow SVGs
+  const arrowImg = new Image();
+  const arrowSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M3 2v18l5.2-4.8 3.8 8.8 3.5-1.5-3.8-8.8H20Z" fill="rgba(245,239,230,0.95)" stroke="rgba(201,150,90,0.85)" stroke-width="1.3" stroke-linejoin="round"/></svg>')}` ;
+  arrowImg.src = arrowSVGData;
 
-  // Hover hand (warm amber tint)
-  const handHoverImg = new Image();
-  const handHoverSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M13 3.5C13 2.12 14.12 1 15.5 1S18 2.12 18 3.5V14a2.5 2.5 0 0 1 2.5 2.5v.5a2.5 2.5 0 0 1 2 2.45v.55a2.5 2.5 0 0 1 1.5 2.27V25a6 6 0 0 1-6 6h-4A6 6 0 0 1 8 25v-8.5a2.5 2.5 0 0 1 5 0V3.5z" fill="rgba(201,150,90,0.95)" stroke="rgba(120,70,20,0.6)" stroke-width="0.7" stroke-linejoin="round"/></svg>')}` ;
-  handHoverImg.src = handHoverSVGData;
+  const arrowHoverImg = new Image();
+  const arrowHoverSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M3 2v18l5.2-4.8 3.8 8.8 3.5-1.5-3.8-8.8H20Z" fill="rgba(201,150,90,0.95)" stroke="rgba(224,184,112,0.95)" stroke-width="1.3" stroke-linejoin="round"/></svg>')}` ;
+  arrowHoverImg.src = arrowHoverSVGData;
 
   window.addEventListener('mousemove', (e) => {
     mx = e.clientX * dpr;
@@ -558,34 +536,33 @@ document.getElementById('year').textContent = new Date().getFullYear();
   window.addEventListener('mousedown', () => { clickPulse = 1; });
 
   function drawBot(bx, by, size) {
-    // Small orbiting bot around the cursor
+    // Small orbiting dot/bot around the cursor
     const s = size * dpr;
-    const col = overInteractive ? '198,166,100' : '56,189,248';
+    const col = overInteractive ? '224,184,112' : '201,150,90';
     ctx.save();
     ctx.translate(bx, by);
-    // Bot body
-    ctx.fillStyle = `rgba(${col},0.85)`;
+    // Bot head
+    ctx.fillStyle = `rgba(${col},0.9)`;
     ctx.strokeStyle = `rgba(${col},1)`;
     ctx.lineWidth = 0.8 * dpr;
-    // head
     ctx.beginPath();
     ctx.roundRect(-s * 0.5, -s * 0.7, s, s * 0.65, s * 0.15);
     ctx.fill();
     ctx.stroke();
     // eyes
-    ctx.fillStyle = `rgba(15,23,42,0.9)`;
+    ctx.fillStyle = `rgba(18,14,10,0.95)`;
     ctx.beginPath();
     ctx.arc(-s * 0.18, -s * 0.42, s * 0.1, 0, Math.PI * 2);
     ctx.arc(s * 0.18, -s * 0.42, s * 0.1, 0, Math.PI * 2);
     ctx.fill();
     // eye glow
-    ctx.fillStyle = `rgba(${col},0.9)`;
+    ctx.fillStyle = `rgba(${col},1)`;
     ctx.beginPath();
     ctx.arc(-s * 0.18, -s * 0.42, s * 0.055, 0, Math.PI * 2);
     ctx.arc(s * 0.18, -s * 0.42, s * 0.055, 0, Math.PI * 2);
     ctx.fill();
     // body
-    ctx.fillStyle = `rgba(${col},0.7)`;
+    ctx.fillStyle = `rgba(${col},0.75)`;
     ctx.beginPath();
     ctx.roundRect(-s * 0.38, -s * 0.06, s * 0.76, s * 0.5, s * 0.1);
     ctx.fill();
@@ -598,7 +575,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
     ctx.lineWidth = 0.8 * dpr;
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(0, -s * 1.05, s * 0.09, 0, Math.PI * 2);
+    ctx.arc(0, -s * 1.05, s * 0.1, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(${col},1)`;
     ctx.fill();
     ctx.restore();
@@ -607,26 +584,25 @@ document.getElementById('year').textContent = new Date().getFullYear();
   function draw() {
     ctx.clearRect(0, 0, w, h);
 
-    const handSize = 32 * dpr;
-    const img = overInteractive ? handHoverImg : handImg;
-    // Draw hand cursor — tip of index finger is roughly at top-left
+    const arrowSize = 22 * dpr;
+    const img = overInteractive ? arrowHoverImg : arrowImg;
     if (img.complete) {
       ctx.globalAlpha = 1;
-      ctx.drawImage(img, mx - 6 * dpr, my - 4 * dpr, handSize, handSize);
+      ctx.drawImage(img, mx, my, arrowSize, arrowSize);
     }
 
-    // Orbiting bot
-    botAngle += 0.04;
-    const orbitR = 28 * dpr;
-    const bx = mx + Math.cos(botAngle) * orbitR;
-    const by = my + Math.sin(botAngle) * orbitR;
-    drawBot(bx, by, 5);
+    // Orbiting dot / bot around cursor
+    botAngle += 0.045;
+    const orbitR = 24 * dpr;
+    const bx = mx + Math.cos(botAngle) * orbitR + 10 * dpr;
+    const by = my + Math.sin(botAngle) * orbitR + 10 * dpr;
+    drawBot(bx, by, 4.5);
 
     // click pulse — brief expanding ring
     if (clickPulse > 0) {
       ctx.beginPath();
-      ctx.arc(mx + 8 * dpr, my + 8 * dpr, (1 - clickPulse) * 28 * dpr, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(198,166,100,${clickPulse})`;
+      ctx.arc(mx + 4 * dpr, my + 4 * dpr, (1 - clickPulse) * 26 * dpr, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(201,150,90,${clickPulse})`;
       ctx.lineWidth = 1.2 * dpr;
       ctx.stroke();
       clickPulse -= 0.05;
