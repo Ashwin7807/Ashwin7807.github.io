@@ -113,27 +113,39 @@ document.getElementById('year').textContent = new Date().getFullYear();
 })();
 
 /* =========================================================
-   ID CARD — single touch / click flip
+   ID CARD & SKILL TAB CARDS — Single Touch / Click 180° Flip
    ========================================================= */
 (() => {
-  const card = document.getElementById('id-card');
-  if (!card) return;
-  const doFlip = () => card.classList.toggle('is-flipped');
-  card.addEventListener('click', doFlip);
-  card.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doFlip(); }
-  });
-})();
+  // Photo ID Card
+  const idCard = document.getElementById('id-card');
+  if (idCard) {
+    let busy = false;
+    const flipIdCard = (e) => {
+      if (e) { e.preventDefault(); }
+      if (busy) return;
+      busy = true;
+      idCard.classList.toggle('is-flipped');
+      setTimeout(() => { busy = false; }, 420);
+    };
+    idCard.addEventListener('click', flipIdCard);
+    idCard.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { flipIdCard(e); }
+    });
+  }
 
-/* =========================================================
-   SKILL FLIP CARDS — click to flip (not hover)
-   ========================================================= */
-(() => {
+  // Skill tab cards
   document.querySelectorAll('.skill-flip-card').forEach(card => {
-    const doFlip = () => card.classList.toggle('is-flipped');
-    card.addEventListener('click', doFlip);
+    let busy = false;
+    const flipSkillCard = (e) => {
+      if (e) { e.preventDefault(); }
+      if (busy) return;
+      busy = true;
+      card.classList.toggle('is-flipped');
+      setTimeout(() => { busy = false; }, 420);
+    };
+    card.addEventListener('click', flipSkillCard);
     card.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doFlip(); }
+      if (e.key === 'Enter' || e.key === ' ') { flipSkillCard(e); }
     });
   });
 })();
