@@ -502,14 +502,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const hexChars = '0123456789ABCDEF';
   let overInteractive = false;
 
-  // Preload classic standard cursor pointer arrow SVGs
-  const arrowImg = new Image();
-  const arrowSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M3 2v18l5.2-4.8 3.8 8.8 3.5-1.5-3.8-8.8H20Z" fill="rgba(245,239,230,0.95)" stroke="rgba(201,150,90,0.85)" stroke-width="1.3" stroke-linejoin="round"/></svg>')}` ;
-  arrowImg.src = arrowSVGData;
-
-  const arrowHoverImg = new Image();
-  const arrowHoverSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M3 2v18l5.2-4.8 3.8 8.8 3.5-1.5-3.8-8.8H20Z" fill="rgba(201,150,90,0.95)" stroke="rgba(224,184,112,0.95)" stroke-width="1.3" stroke-linejoin="round"/></svg>')}` ;
-  arrowHoverImg.src = arrowHoverSVGData;
+  // Cursor trail & orbiting dot effects over normal cursor
 
   window.addEventListener('mousemove', (e) => {
     mx = e.clientX * dpr;
@@ -584,19 +577,12 @@ document.getElementById('year').textContent = new Date().getFullYear();
   function draw() {
     ctx.clearRect(0, 0, w, h);
 
-    const arrowSize = 22 * dpr;
-    const img = overInteractive ? arrowHoverImg : arrowImg;
-    if (img.complete) {
-      ctx.globalAlpha = 1;
-      ctx.drawImage(img, mx, my, arrowSize, arrowSize);
-    }
-
-    // Orbiting dot / bot around cursor
+    // Orbiting dot / bot around normal system cursor
     botAngle += 0.045;
-    const orbitR = 24 * dpr;
-    const bx = mx + Math.cos(botAngle) * orbitR + 10 * dpr;
-    const by = my + Math.sin(botAngle) * orbitR + 10 * dpr;
-    drawBot(bx, by, 4.5);
+    const orbitR = 22 * dpr;
+    const bx = mx + Math.cos(botAngle) * orbitR;
+    const by = my + Math.sin(botAngle) * orbitR;
+    drawBot(bx, by, 4.2);
 
     // click pulse — brief expanding ring
     if (clickPulse > 0) {
