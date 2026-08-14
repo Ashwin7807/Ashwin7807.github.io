@@ -372,7 +372,7 @@ main {
 }
 
 #shield-stage canvas {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .hero-content {

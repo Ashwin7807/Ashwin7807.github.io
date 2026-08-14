@@ -55,8 +55,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
   setTimeout(() => {
     let revealedCount = 0;
     let scrambleFrame = 0;
-    const framesPerLetter = 10; // 10 frames of scrambling per character (slow, clear reveal)
-    const intervalMs = 60; // 60ms between frames
+    const framesPerLetter = 4; // 4 frames of scrambling per character (fast, clean reveal)
+    const intervalMs = 40; // 40ms between frames
 
     const interval = setInterval(() => {
       if (revealedCount >= text.length) {
@@ -293,7 +293,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
 })();
 
 /* =========================================================
-   CURSOR EFFECT — soft scan-glow + trailing hex glyphs
+   CURSOR EFFECT — hand pointer cursor + orbiting bot + trailing hex glyphs
    ========================================================= */
 (() => {
   if (window.matchMedia('(hover: none)').matches) return; // skip on touch
@@ -313,19 +313,31 @@ document.getElementById('year').textContent = new Date().getFullYear();
 
   let mx = w / 2, my = h / 2;
   let clickPulse = 0;
-  let scanAngle = 0;
+  let botAngle = 0;
   const glyphs = [];
   const hexChars = '0123456789ABCDEF';
   let overInteractive = false;
+
+  // Preload the cursor SVG as an image for drawing
+  const handImg = new Image();
+  const handSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="rgba(241,233,221,0.92)" stroke="rgba(30,41,59,0.7)" stroke-width="0.5"><path d="M9 11V6a2 2 0 0 1 4 0v5M9 11a2 2 0 0 0-2 2v1l-1 4h12l-1-4v-1a2 2 0 0 0-2-2M9 11h6"/><path d="M5 13v-2a2 2 0 0 1 2-2M19 13v-2a2 2 0 0 0-2-2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // Use a proper pointing hand SVG
+  const handSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><g fill="none"><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" fill="rgba(241,233,221,0.95)"/><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" stroke="rgba(56,189,248,0.6)" stroke-width="1"/></g></svg>')}` ;
+  handImg.src = handSVGData;
+
+  // Hover hand SVG (golden tint)
+  const handHoverImg = new Image();
+  const handHoverSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><g fill="none"><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" fill="rgba(198,166,100,0.95)"/><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" stroke="rgba(198,166,100,0.9)" stroke-width="1"/></g></svg>')}` ;
+  handHoverImg.src = handHoverSVGData;
 
   window.addEventListener('mousemove', (e) => {
     mx = e.clientX * dpr;
     my = e.clientY * dpr;
     const target = document.elementFromPoint(e.clientX, e.clientY);
     overInteractive = !!(target && target.closest('a, button, .id-card, .folder'));
-    if (Math.random() < 0.4) {
+    if (Math.random() < 0.35) {
       const angle = Math.random() * Math.PI * 2;
-      const spread = Math.random() * 10 * dpr;
+      const spread = Math.random() * 12 * dpr;
       const pair = Math.random() < 0.3;
       glyphs.push({
         x: mx + Math.cos(angle) * spread,
@@ -336,83 +348,95 @@ document.getElementById('year').textContent = new Date().getFullYear();
         life: 1,
         decay: 0.014 + Math.random() * 0.016,
         drift: (Math.random() - 0.5) * 0.4,
-        size: (7.5 + Math.random() * 3.5) * dpr,
+        size: (7 + Math.random() * 3.5) * dpr,
       });
     }
   });
   window.addEventListener('mousedown', () => { clickPulse = 1; });
 
-  function drawReticle(size, bracket, gap) {
-    const c = overInteractive ? '198,166,100' : '169,152,133';
-    ctx.strokeStyle = `rgba(${c},0.85)`;
-    ctx.lineWidth = 1.4 * dpr;
-
-    // four corner brackets — target-lock style
-    const s = size, b = bracket;
-    const corners = [
-      [-1, -1], [1, -1], [-1, 1], [1, 1],
-    ];
-    corners.forEach(([sx, sy]) => {
-      const cx = mx + sx * s;
-      const cy = my + sy * s;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + sy * -b);
-      ctx.lineTo(cx, cy);
-      ctx.lineTo(cx + sx * -b, cy);
-      ctx.stroke();
-    });
-
-    // thin crosshair
-    ctx.strokeStyle = `rgba(${c},0.35)`;
-    ctx.lineWidth = 1 * dpr;
+  function drawBot(bx, by, size) {
+    // Small orbiting bot around the cursor
+    const s = size * dpr;
+    const col = overInteractive ? '198,166,100' : '56,189,248';
+    ctx.save();
+    ctx.translate(bx, by);
+    // Bot body
+    ctx.fillStyle = `rgba(${col},0.85)`;
+    ctx.strokeStyle = `rgba(${col},1)`;
+    ctx.lineWidth = 0.8 * dpr;
+    // head
     ctx.beginPath();
-    ctx.moveTo(mx - gap, my); ctx.lineTo(mx - size * 0.4, my);
-    ctx.moveTo(mx + gap, my); ctx.lineTo(mx + size * 0.4, my);
-    ctx.moveTo(mx, my - gap); ctx.lineTo(mx, my - size * 0.4);
-    ctx.moveTo(mx, my + gap); ctx.lineTo(mx, my + size * 0.4);
+    ctx.roundRect(-s * 0.5, -s * 0.7, s, s * 0.65, s * 0.15);
+    ctx.fill();
     ctx.stroke();
+    // eyes
+    ctx.fillStyle = `rgba(15,23,42,0.9)`;
+    ctx.beginPath();
+    ctx.arc(-s * 0.18, -s * 0.42, s * 0.1, 0, Math.PI * 2);
+    ctx.arc(s * 0.18, -s * 0.42, s * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    // eye glow
+    ctx.fillStyle = `rgba(${col},0.9)`;
+    ctx.beginPath();
+    ctx.arc(-s * 0.18, -s * 0.42, s * 0.055, 0, Math.PI * 2);
+    ctx.arc(s * 0.18, -s * 0.42, s * 0.055, 0, Math.PI * 2);
+    ctx.fill();
+    // body
+    ctx.fillStyle = `rgba(${col},0.7)`;
+    ctx.beginPath();
+    ctx.roundRect(-s * 0.38, -s * 0.06, s * 0.76, s * 0.5, s * 0.1);
+    ctx.fill();
+    ctx.stroke();
+    // antenna
+    ctx.beginPath();
+    ctx.moveTo(0, -s * 0.7);
+    ctx.lineTo(0, -s * 1.0);
+    ctx.strokeStyle = `rgba(${col},0.9)`;
+    ctx.lineWidth = 0.8 * dpr;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, -s * 1.05, s * 0.09, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${col},1)`;
+    ctx.fill();
+    ctx.restore();
   }
 
   function draw() {
     ctx.clearRect(0, 0, w, h);
 
-    // core dot
-    ctx.beginPath();
-    ctx.arc(mx, my, 2 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = overInteractive ? 'rgba(198,166,100,0.95)' : 'rgba(241,233,221,0.8)';
-    ctx.fill();
+    const handSize = 32 * dpr;
+    const img = overInteractive ? handHoverImg : handImg;
+    // Draw hand cursor — tip of index finger is roughly at top-left
+    if (img.complete) {
+      ctx.globalAlpha = 1;
+      ctx.drawImage(img, mx - 6 * dpr, my - 4 * dpr, handSize, handSize);
+    }
 
-    // target-lock reticle, tightens slightly over interactive elements
-    const size = (overInteractive ? 14 : 18) * dpr;
-    drawReticle(size, 5 * dpr, 5 * dpr);
+    // Orbiting bot
+    botAngle += 0.04;
+    const orbitR = 28 * dpr;
+    const bx = mx + Math.cos(botAngle) * orbitR;
+    const by = my + Math.sin(botAngle) * orbitR;
+    drawBot(bx, by, 5);
 
-    // slow rotating scan tick on the reticle radius
-    scanAngle += 0.02;
-    const rx = mx + Math.cos(scanAngle) * size * 1.35;
-    const ry = my + Math.sin(scanAngle) * size * 1.35;
-    ctx.beginPath();
-    ctx.arc(rx, ry, 1.6 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(198,166,100,0.7)';
-    ctx.fill();
-
-    // click pulse — brief expanding ring, like a scan ping
+    // click pulse — brief expanding ring
     if (clickPulse > 0) {
       ctx.beginPath();
-      ctx.arc(mx, my, (1 - clickPulse) * 30 * dpr, 0, Math.PI * 2);
+      ctx.arc(mx + 8 * dpr, my + 8 * dpr, (1 - clickPulse) * 28 * dpr, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(198,166,100,${clickPulse})`;
       ctx.lineWidth = 1.2 * dpr;
       ctx.stroke();
-      clickPulse -= 0.04;
+      clickPulse -= 0.05;
     }
 
-    // trailing hex glyphs — soft glow, gentle upward drift, varied size/lifespan
+    // trailing hex glyphs — soft glow, gentle upward drift
     for (let i = glyphs.length - 1; i >= 0; i--) {
       const g = glyphs[i];
       ctx.font = `${g.size}px 'JetBrains Mono', monospace`;
       ctx.shadowColor = 'rgba(198,166,100,0.6)';
       ctx.shadowBlur = 4 * dpr;
       ctx.fillStyle = `rgba(210,198,178,${g.life * 0.55})`;
-      ctx.fillText(g.ch, g.x + 14 * dpr, g.y - 14 * dpr);
+      ctx.fillText(g.ch, g.x + 18 * dpr, g.y - 18 * dpr);
       ctx.shadowBlur = 0;
       g.life -= g.decay;
       g.y -= 0.3 * dpr;
@@ -426,221 +450,108 @@ document.getElementById('year').textContent = new Date().getFullYear();
 })();
 
 /* =========================================================
-   3D CYBERSECURITY SHIELD — reactive, rotating encryption mesh & particles
+   UNIVERSE / STARS BACKGROUND — floating star particles & slow nebula drift
+   (replaces shield; uses Three.js for a beautiful cosmic atmosphere)
    ========================================================= */
 (() => {
-  const stage = document.getElementById('shield-stage');
-  if (!stage || prefersReducedMotion) return;
+  if (prefersReducedMotion) return;
 
-  const width = stage.clientWidth || window.innerWidth;
-  const height = stage.clientHeight || window.innerHeight;
+  const stage = document.getElementById('shield-stage');
+  if (!stage) return;
+
+  const width = window.innerWidth;
+  const height = window.innerHeight;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
-  camera.position.set(0, 0, 9);
+  const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 200);
+  camera.position.set(0, 0, 12);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(width, height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.domElement.style.pointerEvents = 'none';
   stage.appendChild(renderer.domElement);
 
-  // Lighting — Cool Electric Cyber Theme
-  scene.add(new THREE.AmbientLight(0x0f172a, 1.8));
-  const key = new THREE.PointLight(0x38bdf8, 70, 30);
-  key.position.set(4, 5, 6);
-  scene.add(key);
-  const rim = new THREE.PointLight(0x0284c7, 40, 30);
-  rim.position.set(-5, -3, -4);
-  scene.add(rim);
-
-  // Shield silhouette shape
-  const shieldShape = new THREE.Shape();
-  shieldShape.moveTo(0, 2.1);
-  shieldShape.bezierCurveTo(1.3, 2.1, 1.7, 1.6, 1.7, 1.6);
-  shieldShape.lineTo(1.7, 0.2);
-  shieldShape.bezierCurveTo(1.7, -1.3, 0.9, -2.3, 0, -2.7);
-  shieldShape.bezierCurveTo(-0.9, -2.3, -1.7, -1.3, -1.7, 0.2);
-  shieldShape.lineTo(-1.7, 1.6);
-  shieldShape.bezierCurveTo(-1.7, 1.6, -1.3, 2.1, 0, 2.1);
-
-  const extrudeSettings = { depth: 0.32, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 4, curveSegments: 24 };
-  const geometry = new THREE.ExtrudeGeometry(shieldShape, extrudeSettings);
-  geometry.center();
-
-  // Procedural dark metal texture
-  function makeMetalTexture() {
-    const size = 512;
-    const tc = document.createElement('canvas');
-    tc.width = size; tc.height = size;
-    const tx = tc.getContext('2d');
-    tx.fillStyle = '#1e293b';
-    tx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 900; i++) {
-      const y = Math.random() * size;
-      const shade = 30 + Math.random() * 50;
-      tx.strokeStyle = `rgba(${shade},${shade + 20},${shade + 40},0.12)`;
-      tx.lineWidth = 0.6 + Math.random() * 0.8;
-      tx.beginPath();
-      tx.moveTo(0, y);
-      tx.lineTo(size, y + (Math.random() - 0.5) * 4);
-      tx.stroke();
+  // --- Star field layers (near, mid, far)
+  function makeStars(count, spread, size, opacity, color) {
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count * 3; i += 3) {
+      pos[i]     = (Math.random() - 0.5) * spread;
+      pos[i + 1] = (Math.random() - 0.5) * spread;
+      pos[i + 2] = (Math.random() - 0.5) * spread * 0.5;
     }
-    const tex = new THREE.CanvasTexture(tc);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2, 2);
-    return tex;
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ color, size, transparent: true, opacity, sizeAttenuation: true });
+    return new THREE.Points(geo, mat);
   }
-  const metalTexture = makeMetalTexture();
 
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x1e293b,
-    metalness: 0.75,
-    roughness: 0.3,
-    roughnessMap: metalTexture,
-    bumpMap: metalTexture,
-    bumpScale: 0.015,
-    emissive: 0x0284c7,
-    emissiveIntensity: 0.35,
-  });
-  const shield = new THREE.Mesh(geometry, material);
-  scene.add(shield);
+  const starsFar  = makeStars(900,  60, 0.03, 0.5,  0x94A3B8);
+  const starsMid  = makeStars(500,  45, 0.055, 0.65, 0xBAE6FD);
+  const starsNear = makeStars(200,  30, 0.09,  0.8,  0xF0F9FF);
+  scene.add(starsFar, starsMid, starsNear);
 
-  // Outer Cybersecurity Encryption Mesh Barrier (Wireframe Icosahedron)
-  const meshGeo = new THREE.IcosahedronGeometry(2.4, 1);
-  const meshMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.2 });
-  const cyberMesh = new THREE.Mesh(meshGeo, meshMat);
-  scene.add(cyberMesh);
+  // --- Wireframe icosahedron nebula sphere (subtle)
+  const nebGeo = new THREE.IcosahedronGeometry(7, 1);
+  const nebMat = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, wireframe: true, transparent: true, opacity: 0.055 });
+  const nebula = new THREE.Mesh(nebGeo, nebMat);
+  scene.add(nebula);
 
-  // Orbiting Cyber Data Particles
-  const particleCount = 140;
-  const pGeo = new THREE.BufferGeometry();
-  const pPositions = new Float32Array(particleCount * 3);
-  for (let i = 0; i < particleCount * 3; i += 3) {
-    const r = 2.2 + Math.random() * 1.6;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = (Math.random() - 0.5) * Math.PI;
-    pPositions[i] = r * Math.cos(theta) * Math.cos(phi);
-    pPositions[i + 1] = r * Math.sin(phi);
-    pPositions[i + 2] = r * Math.sin(theta) * Math.cos(phi);
+  // --- Outer orbiting ring of glow dots
+  const ringGeo = new THREE.BufferGeometry();
+  const ringCount = 80;
+  const ringPos = new Float32Array(ringCount * 3);
+  for (let i = 0; i < ringCount; i++) {
+    const angle = (i / ringCount) * Math.PI * 2;
+    const r = 5.5 + (Math.random() - 0.5) * 1.8;
+    ringPos[i * 3]     = Math.cos(angle) * r;
+    ringPos[i * 3 + 1] = (Math.random() - 0.5) * 2.5;
+    ringPos[i * 3 + 2] = Math.sin(angle) * r;
   }
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-  const pMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.045, transparent: true, opacity: 0.65 });
-  const particles = new THREE.Points(pGeo, pMat);
-  scene.add(particles);
+  ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+  const ringMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.07, transparent: true, opacity: 0.55 });
+  const ring = new THREE.Points(ringGeo, ringMat);
+  scene.add(ring);
 
-  // Canvas texture with Security Lock Icon + "ASH" engraved decal
-  const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = 512;
-  const c = canvas.getContext('2d');
-  c.clearRect(0, 0, 512, 512);
+  // Second accent ring (gold)
+  const ring2Geo = new THREE.BufferGeometry();
+  const ring2Pos = new Float32Array(50 * 3);
+  for (let i = 0; i < 50; i++) {
+    const angle = (i / 50) * Math.PI * 2;
+    const r = 4.2 + (Math.random() - 0.5) * 1.2;
+    ring2Pos[i * 3]     = Math.cos(angle) * r;
+    ring2Pos[i * 3 + 1] = (Math.random() - 0.5) * 1.5;
+    ring2Pos[i * 3 + 2] = Math.sin(angle) * r;
+  }
+  ring2Geo.setAttribute('position', new THREE.BufferAttribute(ring2Pos, 3));
+  const ring2Mat = new THREE.PointsMaterial({ color: 0xc6a664, size: 0.055, transparent: true, opacity: 0.45 });
+  const ring2 = new THREE.Points(ring2Geo, ring2Mat);
+  scene.add(ring2);
 
-  // Draw cyber circuit grid on shield decal
-  c.strokeStyle = 'rgba(56,189,248,0.2)';
-  c.lineWidth = 2;
-  c.beginPath();
-  c.arc(256, 256, 180, 0, Math.PI * 2);
-  c.stroke();
-
-  // Security Padlock Icon
-  c.fillStyle = '#38bdf8';
-  c.strokeStyle = '#38bdf8';
-  c.lineWidth = 8;
-  // Shackle
-  c.beginPath();
-  c.arc(256, 175, 42, Math.PI, 0);
-  c.stroke();
-  // Lock body
-  c.beginPath();
-  c.roundRect(210, 175, 92, 75, 10);
-  c.fill();
-  // Keyhole
-  c.fillStyle = '#0f172a';
-  c.beginPath();
-  c.arc(256, 205, 10, 0, Math.PI * 2);
-  c.fill();
-
-  // "ASH" engraved text
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  c.font = '800 100px "Syne", sans-serif';
-
-  c.fillStyle = 'rgba(56,189,248,0.3)';
-  c.fillText('ASH', 260, 310);
-  c.fillStyle = '#F8FAFC';
-  c.fillText('ASH', 256, 306);
-  c.strokeStyle = '#38bdf8';
-  c.lineWidth = 3;
-  c.strokeText('ASH', 256, 306);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const decalGeo = new THREE.PlaneGeometry(2.6, 2.6);
-  const decalMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
-  const decal = new THREE.Mesh(decalGeo, decalMat);
-  decal.position.z = 0.19;
-  shield.add(decal);
-
-  // Idle floating rotation baseline
-  let baseRotY = 0;
-  let targetRotX = 0, targetRotY = 0;
-  let currentRotX = 0, currentRotY = 0;
-
-  // Drag to rotate
-  let dragging = false;
-  let dragStart = { x: 0, y: 0 };
-  let dragRot = { x: 0, y: 0 };
-
-  renderer.domElement.style.pointerEvents = 'auto';
-  renderer.domElement.addEventListener('pointerdown', (e) => {
-    dragging = true;
-    dragStart = { x: e.clientX, y: e.clientY };
-    dragRot = { x: currentRotX, y: currentRotY };
-  });
-  window.addEventListener('pointerup', () => { dragging = false; });
-  window.addEventListener('pointermove', (e) => {
-    if (dragging) {
-      const dx = (e.clientX - dragStart.x) * 0.006;
-      const dy = (e.clientY - dragStart.y) * 0.006;
-      targetRotY = dragRot.y + dx;
-      targetRotX = dragRot.x - dy;
-      return;
-    }
-
-    const rect = stage.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const radius = Math.min(rect.width, rect.height) * 0.55;
-
-    const nx = (e.clientX - cx) / radius;
-    const ny = (e.clientY - cy) / radius;
-    const strength = Math.max(0, 1 - Math.min(Math.hypot(nx, ny), 1.8) / 1.8);
-
-    targetRotY = Math.max(-0.85, Math.min(0.85, nx * 0.8)) * strength;
-    targetRotX = Math.max(-0.6, Math.min(0.6, -ny * 0.55)) * strength;
-  });
-
+  let t = 0;
   function animate() {
     requestAnimationFrame(animate);
-    baseRotY += 0.0018;
+    t += 0.0005;
 
-    currentRotX += (targetRotX - currentRotX) * 0.14;
-    currentRotY += (targetRotY - currentRotY) * 0.14;
+    starsFar.rotation.y  = t * 0.3;
+    starsMid.rotation.y  = t * 0.5;
+    starsNear.rotation.y = t * 0.8;
+    starsNear.rotation.x = Math.sin(t * 0.4) * 0.06;
 
-    shield.rotation.x = currentRotX;
-    shield.rotation.y = baseRotY + currentRotY;
-    shield.position.y = Math.sin(baseRotY * 4) * 0.08;
+    nebula.rotation.y = -t * 0.4;
+    nebula.rotation.x = Math.sin(t * 0.3) * 0.08;
 
-    // Counter-rotate cyber mesh and data particles for cybersecurity effect
-    cyberMesh.rotation.y = -baseRotY * 1.5;
-    cyberMesh.rotation.x = Math.sin(baseRotY * 2) * 0.2;
-    particles.rotation.y = baseRotY * 0.8;
+    ring.rotation.y  = t * 1.2;
+    ring2.rotation.y = -t * 0.9;
+    ring2.rotation.x = Math.sin(t * 0.6) * 0.1;
 
     renderer.render(scene, camera);
   }
   animate();
 
   window.addEventListener('resize', () => {
-    const w2 = stage.clientWidth || window.innerWidth;
-    const h2 = stage.clientHeight || window.innerHeight;
+    const w2 = window.innerWidth;
+    const h2 = window.innerHeight;
     camera.aspect = w2 / h2;
     camera.updateProjectionMatrix();
     renderer.setSize(w2, h2);
