@@ -146,6 +146,210 @@ document.getElementById('year').textContent = new Date().getFullYear();
 })();
 
 /* =========================================================
+   SKILL FLIP CARDS — click to flip (not hover)
+   ========================================================= */
+(() => {
+  document.querySelectorAll('.skill-flip-card').forEach(card => {
+    const doFlip = () => card.classList.toggle('is-flipped');
+    card.addEventListener('click', doFlip);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doFlip(); }
+    });
+  });
+})();
+
+/* =========================================================
+   LANGUAGE CHIPS TOOLTIP
+   ========================================================= */
+(() => {
+  const tooltip = document.getElementById('lang-tooltip');
+  if (!tooltip) return;
+  const defaultText = 'Hover or tap a language or tool chip above to see details.';
+  tooltip.textContent = defaultText;
+
+  document.querySelectorAll('.lang-chip').forEach(chip => {
+    const desc = chip.dataset.desc;
+    if (!desc) return;
+    chip.addEventListener('mouseenter', () => { tooltip.textContent = desc; });
+    chip.addEventListener('mouseleave', () => { tooltip.textContent = defaultText; });
+    chip.addEventListener('focus', () => { tooltip.textContent = desc; });
+    chip.addEventListener('blur', () => { tooltip.textContent = defaultText; });
+  });
+})();
+
+/* =========================================================
+   NEON BORDER — animated amber glow arc around elements
+   Converted from React/Originkit NeonBorder to vanilla JS canvas
+   ========================================================= */
+(() => {
+  if (prefersReducedMotion) return;
+
+  const SPEED = 16; // 1–20
+  const BORDER_SIZE = 55; // arc length percent
+  const GLOW_LAYERS = [
+    { blur: 8, opacity: 0.55, reach: 0.3 },
+    { blur: 18, opacity: 0.3,  reach: 0.6 },
+    { blur: 48, opacity: 0.15, reach: 1.0 },
+  ];
+  const SLOWEST_CYCLE = 30;
+  const FASTEST_CYCLE = 4;
+
+  function hexToRgb(hex) {
+    const h = hex.replace('#', '');
+    const n = parseInt(h.length === 3
+      ? h.split('').map(c => c+c).join('') : h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function perimeterPoint(u, w, h) {
+    const d = (((u % 1) + 1) % 1) * 2 * (w + h);
+    if (d < w)         return [d, 0];
+    if (d < w + h)     return [w, d - w];
+    if (d < w * 2 + h) return [w - (d - w - h), h];
+    return [0, h - (d - w * 2 - h)];
+  }
+
+  function perimeterAngle(u, w, h) {
+    const [x, y] = perimeterPoint(u, w, h);
+    return (Math.atan2(x - w/2, h/2 - y) * 180) / Math.PI;
+  }
+
+  function cornerLap(k, w, h) {
+    const p = 2 * (w + h);
+    const at = [0, w/p, (w+h)/p, (w*2+h)/p];
+    return Math.floor(k/4) + at[((k%4)+4)%4];
+  }
+
+  function withAlpha(r, g, b, a) {
+    return `rgba(${r},${g},${b},${Math.max(0,Math.min(1,a)).toFixed(3)})`;
+  }
+
+  function drawArc(ctx, lap, bsPct, W, H, rgb, thick, glow) {
+    const span = Math.max(0.015, (bsPct / 100) * 0.5);
+    const ARC_S = 20;
+    let base = 0, prev = 0, acc = 0;
+    const solidT = bsPct / 100;
+
+    // Build gradient stops
+    const stops = [];
+    for (let i = 0; i <= ARC_S; i++) {
+      const f = i / ARC_S;
+      const angle = perimeterAngle(lap + (f - 0.5) * span, W, H);
+      if (i === 0) { base = angle; }
+      else {
+        let d = angle - prev;
+        while (d > 180) d -= 360;
+        while (d < -180) d += 360;
+        acc += d;
+      }
+      prev = angle;
+      const t = Math.abs(f - 0.5) * 2;
+      const k = solidT >= 1 ? 1 : t <= solidT ? 1 : 1 - (t - solidT) / (1 - solidT);
+      const alpha = k * k * (3 - 2 * k);
+      stops.push({ angle: acc, alpha });
+    }
+    stops.push({ angle: acc, alpha: 0 });
+    stops.push({ angle: 360, alpha: 0 });
+
+    // Draw main arc band
+    const gradient = ctx.createConicGradient ? null : null; // fallback
+    // Use manual arc segments since createConicGradient support varies
+    const cx2 = W / 2, cy2 = H / 2;
+    const perimeter = 2 * (W + H);
+    const [r, g, b] = rgb;
+
+    // Draw border segments
+    ctx.save();
+    ctx.lineWidth = thick;
+    for (let i = 0; i < stops.length - 1; i++) {
+      const { angle: a0, alpha: al0 } = stops[i];
+      const { angle: a1, alpha: al1 } = stops[i+1];
+      if (al0 <= 0.001 && al1 <= 0.001) continue;
+      // Find perimeter position for this angle segment
+      const f0 = i / ARC_S, f1 = (i+1) / ARC_S;
+      const u0 = lap + (f0 - 0.5) * span;
+      const u1 = lap + (f1 - 0.5) * span;
+      const [x0, y0] = perimeterPoint(u0, W, H);
+      const [x1, y1] = perimeterPoint(u1, W, H);
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, withAlpha(r, g, b, al0));
+      grad.addColorStop(1, withAlpha(r, g, b, al1));
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.strokeStyle = grad;
+      ctx.stroke();
+
+      // Glow layers
+      if (glow > 0) {
+        GLOW_LAYERS.forEach(layer => {
+          ctx.save();
+          ctx.shadowColor = withAlpha(r, g, b, layer.opacity * (al0 + al1) / 2);
+          ctx.shadowBlur = layer.blur;
+          ctx.lineWidth = thick + layer.reach * 10;
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.strokeStyle = withAlpha(r, g, b, layer.opacity * (al0 + al1) / 2 * glow);
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+    }
+    ctx.restore();
+  }
+
+  function initNeonCanvas(canvas) {
+    const wrap = canvas.parentElement;
+    if (!wrap) return;
+    const colorHex = canvas.dataset.neonColor || '#C9965A';
+    const rgb = hexToRgb(colorHex);
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    let W = 0, H = 0;
+    let lap = 0, corner = 0, stepT = 0;
+    let last = performance.now();
+
+    function resize() {
+      const rect = wrap.getBoundingClientRect();
+      W = rect.width; H = rect.height;
+      canvas.width  = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(wrap);
+    resize();
+
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const beat = (SLOWEST_CYCLE + ((FASTEST_CYCLE - SLOWEST_CYCLE) * (SPEED - 1)) / 19) / 4;
+      stepT += dt / beat;
+      while (stepT >= 1) { stepT -= 1; corner += 1; }
+      const eased = stepT * stepT * (3 - 2 * stepT); // smooth step
+      const from = cornerLap(corner, W, H);
+      const to   = cornerLap(corner + 1, W, H);
+      lap = from + (to - from) * eased;
+
+      ctx.clearRect(0, 0, W, H);
+      // Draw two arcs 180° apart for symmetric glow
+      drawArc(ctx, lap,       BORDER_SIZE, W, H, rgb, 2, 1);
+      drawArc(ctx, lap + 0.5, BORDER_SIZE, W, H, rgb, 2, 1);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  document.querySelectorAll('canvas.neon-canvas').forEach(initNeonCanvas);
+})();
+
+
+/* =========================================================
    CURSOR-REACTIVE GRID BACKGROUND (CursorGrid)
    ========================================================= */
 (() => {
@@ -157,9 +361,9 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   const cfg = {
-    cellSize: 75, color: '#38BDF8', radius: 130,
+    cellSize: 75, color: '#C9965A', radius: 130,
     falloff: 'smooth', holdTime: 350, fadeDuration: 700,
-    lineWidth: 1.0, maxOpacity: 0.45, fillOpacity: 0,
+    lineWidth: 1.0, maxOpacity: 0.38, fillOpacity: 0,
     gridOpacity: 0, cellRadius: 0, clickPulse: true, pulseSpeed: 550
   };
 
@@ -318,16 +522,15 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const hexChars = '0123456789ABCDEF';
   let overInteractive = false;
 
-  // Preload the cursor SVG as an image for drawing
+  // Preload clean pointer-hand cursor SVGs
   const handImg = new Image();
-  const handSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="rgba(241,233,221,0.92)" stroke="rgba(30,41,59,0.7)" stroke-width="0.5"><path d="M9 11V6a2 2 0 0 1 4 0v5M9 11a2 2 0 0 0-2 2v1l-1 4h12l-1-4v-1a2 2 0 0 0-2-2M9 11h6"/><path d="M5 13v-2a2 2 0 0 1 2-2M19 13v-2a2 2 0 0 0-2-2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  // Use a proper pointing hand SVG
-  const handSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><g fill="none"><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" fill="rgba(241,233,221,0.95)"/><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" stroke="rgba(56,189,248,0.6)" stroke-width="1"/></g></svg>')}` ;
+  // Classic pointing hand — index finger extended upward, clean cursor shape
+  const handSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M13 3.5C13 2.12 14.12 1 15.5 1S18 2.12 18 3.5V14a2.5 2.5 0 0 1 2.5 2.5v.5a2.5 2.5 0 0 1 2 2.45v.55a2.5 2.5 0 0 1 1.5 2.27V25a6 6 0 0 1-6 6h-4A6 6 0 0 1 8 25v-8.5a2.5 2.5 0 0 1 5 0V3.5z" fill="rgba(245,239,230,0.93)" stroke="rgba(60,40,20,0.5)" stroke-width="0.7" stroke-linejoin="round"/></svg>')}` ;
   handImg.src = handSVGData;
 
-  // Hover hand SVG (golden tint)
+  // Hover hand (warm amber tint)
   const handHoverImg = new Image();
-  const handHoverSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><g fill="none"><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" fill="rgba(198,166,100,0.95)"/><path d="M12 2a3 3 0 0 1 3 3v7.382l1.447-1.447a2.5 2.5 0 1 1 3.536 3.536l-1.019 1.019A4.978 4.978 0 0 1 20 17v4a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-6.5a2.5 2.5 0 0 1 5 0V12a3 3 0 0 1 3-3V5a3 3 0 0 1 3-3z" stroke="rgba(198,166,100,0.9)" stroke-width="1"/></g></svg>')}` ;
+  const handHoverSVGData = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M13 3.5C13 2.12 14.12 1 15.5 1S18 2.12 18 3.5V14a2.5 2.5 0 0 1 2.5 2.5v.5a2.5 2.5 0 0 1 2 2.45v.55a2.5 2.5 0 0 1 1.5 2.27V25a6 6 0 0 1-6 6h-4A6 6 0 0 1 8 25v-8.5a2.5 2.5 0 0 1 5 0V3.5z" fill="rgba(201,150,90,0.95)" stroke="rgba(120,70,20,0.6)" stroke-width="0.7" stroke-linejoin="round"/></svg>')}` ;
   handHoverImg.src = handHoverSVGData;
 
   window.addEventListener('mousemove', (e) => {
